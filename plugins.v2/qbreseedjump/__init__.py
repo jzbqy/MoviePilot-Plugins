@@ -20,7 +20,7 @@ from app.schemas import NotificationType, ServiceInfo
 from app.utils.http import RequestUtils
 
 
-class qbreseedjump(_PluginBase):
+class QbReseedJump(_PluginBase):
     # 插件名称
     plugin_name = "QB跳校助手"
     # 插件描述
@@ -140,6 +140,11 @@ class qbreseedjump(_PluginBase):
                     logger.info(f"自动跳校服务已配置 CRON '{self._cron}'，任务将通过公共服务注册")
         except Exception as e:
             logger.error(f"初始化插件失败: {e}")
+
+    @staticmethod
+    def get_menu() -> List[Dict[str, Any]]:
+        """获取菜单"""
+        return []
 
     @staticmethod
     def get_command() -> List[Dict[str, Any]]:
