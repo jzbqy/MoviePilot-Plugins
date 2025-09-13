@@ -1,5 +1,7 @@
-## 一键跳校（MoviePilot V2 插件）
+MoviePilot官方插件市场：https://github.com/jxxghp/MoviePilot-Plugins
+MoviePilot第三方插件市场：https://github.com/jzbqy/MoviePilot-Plugins
 
+## 一键跳校（MoviePilot V2 插件）
 - 目录：`plugins.v2/reseedjump/`
 - 定义：`package.v2.json`（键名与目录名一致：`reseedjump`）
 
