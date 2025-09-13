@@ -1901,8 +1901,4 @@ class QbReseedJump(_PluginBase):
                     self._event.clear()
                 self._scheduler = None
         except Exception as e:
-<<<<<<< HEAD
             print(str(e))
-=======
-            print(str(e))
->>>>>>> c9546f4aab7064eb4548585b4bb98c6136929d5a
