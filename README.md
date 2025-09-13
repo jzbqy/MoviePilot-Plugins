@@ -1,5 +1,7 @@
 # QB跳校助手 - MoviePilot V2 插件
 
+PS：AI写的，有问题可以说，别骂我（狗头保命）
+
 第三方插件市场：https://github.com/jzbqy/MoviePilot-Plugins
 
 ## 📋 插件信息
