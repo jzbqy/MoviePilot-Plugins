@@ -4,7 +4,7 @@
     "description": "仅支持QB下载器———————跳校有风险，操作需谨慎。导出 .torrent → 删除原任务 → 跳校/重新添加（QB 跳过校验），保留原分类/保存路径并打标。支持tracker映射、数据统计、历史数据清理等功能。",
     "labels": "下载器,跳校,统计",
     "version": "1.0.3",
-    "icon": "seed.png",
+    "icon": "https://raw.githubusercontent.com/jzbqy/MoviePilot-Plugins/main/icons/seed.png",
     "author": "jzbqy",
     "author_url": "https://github.com/jzbqy",
     "level": 2,
