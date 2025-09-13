@@ -6,6 +6,7 @@ PS：AI写的，有问题可以说，别骂我（狗头保命）
 
 ## 📋 插件信息
 
+
 - **插件名称**：QB跳校助手
 - **版本**：v1.0.3
 - **作者**：jzbqy
@@ -36,7 +37,22 @@ QB跳校助手是一个专为MoviePilot V2设计的插件，用于自动化处�
    - 在插件市场中找到"QB跳校助手"
    - 点击"安装到本地"
 
-### 方法二：手动安装
+### 方法二：通过本地插件安装工具（推荐）
+
+1. **安装本地插件安装工具**
+   - 添加第三方源：`https://github.com/KoWming/MoviePilot-Plugins`
+   - 安装"本地插件安装"插件（LocalPluginInstall）
+
+2. **下载插件ZIP包**
+   - 下载地址：`https://github.com/jzbqy/MoviePilot-Plugins/archive/refs/heads/main.zip`
+   - 或从本仓库的 `qbreseedjump.zip` 文件
+
+3. **上传安装**
+   - 打开"本地插件安装"插件
+   - 上传下载的ZIP文件
+   - 系统会自动检测并安装QB跳校助手插件
+
+### 方法三：手动安装（这我也没用过）
 
 1. **下载插件文件**
    ```bash
