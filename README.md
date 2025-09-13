@@ -32,13 +32,12 @@
 ```json
 {
   "QB名称": "D:/QB/BT_backup",
-  "TR名称": "/var/lib/transmission/torrents"
 }
 ```
 
 ### 注意事项
 - 需能从磁盘读取 `.torrent` 文件；若目录配置错误，将跳过并记录日志
-- 仅支持 qBittorrent（Transmission 已移除支持）
+- 仅支持 qBittorrent
 - 若你仓库含多插件，请确保 `package.v2.json` 的键与目录名一一对应
 
 
