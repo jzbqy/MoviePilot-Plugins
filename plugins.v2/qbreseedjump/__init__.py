@@ -20,7 +20,7 @@ from app.schemas import NotificationType, ServiceInfo
 from app.utils.http import RequestUtils
 
 
-class Qbreseedjump(_PluginBase):
+class qbreseedjump(_PluginBase):
     # 插件名称
     plugin_name = "QB跳校助手"
     # 插件描述
