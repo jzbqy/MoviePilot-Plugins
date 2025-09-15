@@ -16,7 +16,7 @@ from app.core.config import settings
 from app.helper.downloader import DownloaderHelper
 from app.log import logger
 from app.plugins import _PluginBase
-from app.schemas import NotificationType, ServiceInfo
+from app.schemas import NotificationType, ServiceInfo, Response
 from app.utils.http import RequestUtils
 
 
@@ -55,7 +55,7 @@ class QbReseedJump(_PluginBase):
     _processedtag = "已跳校"
     _autostart = True
     _remain_category = True
-    _delete_exported = False
+    _delete_exported = True
     _risk_confirmation = ""              # 风险确认文本
     _processedcategory = ""              # 处理完成后加分类
     _tracker_mapping = ""                # tracker映射表
@@ -75,7 +75,7 @@ class QbReseedJump(_PluginBase):
                 self._cron = config.get("cron", "0 0 */23 * *")
                 # 规范化 cron：空或全星号时退回默认 0 0 */23 * *
                 raw_cron = (self._cron or "").strip()
-                if not raw_cron or raw_cron.replace(" ", "") in {"*****"} or raw_cron == "* * * * *":
+                if not raw_cron:
                     self._cron = "0 0 */23 * *"
                     logger.info("检测到空或无效 cron，已回退为默认：0 0 */23 * *")
                 else:
@@ -87,13 +87,13 @@ class QbReseedJump(_PluginBase):
                 self._processedtag = config.get("processedtag", "已跳校")
                 self._autostart = config.get("autostart", True)
                 self._remain_category = config.get("remain_category", True)
-                self._delete_exported = config.get("delete_exported", False)
+                self._delete_exported = config.get("delete_exported", True)
                 self._risk_confirmation = config.get("risk_confirmation", "")
                 self._processedcategory = config.get("processedcategory", "")
                 self._tracker_mapping = config.get("tracker_mapping", "")
                 logger.info(f"加载tracker映射表: {len(self._tracker_mapping.split())} 条映射")
                 
-                # 保存配置
+                # 保存配置（保存修改后的cron值）
                 self.__update_config()
 
             # 数据存储已改为使用MoviePilot内置API，无需初始化文件
@@ -155,6 +155,13 @@ class QbReseedJump(_PluginBase):
         """获取API"""
         return [
             {
+                "path": "/test",
+                "endpoint": self.test_api,
+                "methods": ["GET"],
+                "summary": "测试API",
+                "description": "测试API是否工作"
+            },
+            {
                 "path": "/clear_all_history_data",
                 "endpoint": self.clear_all_history_data,
                 "methods": ["GET"],
@@ -204,28 +211,67 @@ class QbReseedJump(_PluginBase):
             expr = (expr or "").strip() or "0 0 */23 * *"
             if expr == "0 0 */23 * *":
                 return "每隔23小时执行一次"
-            if expr == "0 0 * * *":
-                return "每天 00:00 执行一次"
-            if expr == "0 */1 * * *":
-                return "每小时执行一次"
-            if expr == "*/5 * * * *":
-                return "每5分钟执行一次"
-            # 解析自定义cron表达式
+            
             try:
                 parts = expr.split()
-                if len(parts) == 5:
-                    minute, hour, day, month, weekday = parts
-                    if minute != "*" and hour != "*":
-                        return f"每天 {hour.zfill(2)}:{minute.zfill(2)} 执行一次"
-                    elif hour != "*":
-                        return f"每天 {hour.zfill(2)}:00 执行一次"
-                    elif minute != "*":
-                        return f"每小时第 {minute} 分钟执行一次"
+                if len(parts) != 5:
+                    return f"Cron: {expr}"
+                
+                minute, hour, day, month, weekday = parts
+                
+                # 解析分钟间隔
+                if minute.startswith("*/") and hour == "*" and day == "*" and month == "*" and weekday == "*":
+                    interval = minute[2:]
+                    return f"每{interval}分钟执行一次"
+                
+                # 解析小时间隔
+                if minute == "0" and hour.startswith("*/") and day == "*" and month == "*" and weekday == "*":
+                    interval = hour[2:]
+                    return f"每{interval}小时执行一次"
+                
+                # 解析天间隔
+                if minute == "0" and hour == "0" and day.startswith("*/") and month == "*" and weekday == "*":
+                    interval = day[2:]
+                    return f"每{interval}天执行一次"
+                
+                # 解析月间隔
+                if minute == "0" and hour == "0" and day == "0" and month.startswith("*/") and weekday == "*":
+                    interval = month[2:]
+                    return f"每{interval}个月执行一次"
+                
+                # 解析具体时间
+                if minute != "*" and hour != "*" and day == "*" and month == "*" and weekday == "*":
+                    return f"每天 {hour.zfill(2)}:{minute.zfill(2)} 执行一次"
+                
+                # 解析每天特定时间
+                if minute == "0" and hour != "*" and day == "*" and month == "*" and weekday == "*":
+                    return f"每天 {hour.zfill(2)}:00 执行一次"
+                
+                # 解析每小时特定分钟
+                if minute != "*" and hour == "*" and day == "*" and month == "*" and weekday == "*":
+                    return f"每小时第 {minute} 分钟执行一次"
+                
+                # 解析每周特定时间
+                if minute != "*" and hour != "*" and day == "*" and month == "*" and weekday != "*":
+                    weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
+                    try:
+                        wd = int(weekday)
+                        if 0 <= wd <= 6:
+                            return f"每周{weekdays[wd]} {hour.zfill(2)}:{minute.zfill(2)} 执行一次"
+                    except:
+                        pass
+                
+                # 解析每月特定日期
+                if minute == "0" and hour == "0" and day != "*" and month == "*" and weekday == "*":
+                    return f"每月{day}日 00:00 执行一次"
+                
+                # 默认显示
+                return f"Cron: {expr}"
+                
             except:
-                pass
-            return f"Cron: {expr}"
+                return f"Cron: {expr}"
         cron_default = (self._cron or "").strip() or "0 0 */23 * *"
-        cron_hint = _cron_text(cron_default)
+        cron_hint = _cron_text(self._cron or "0 0 */23 * *")
             
         return [
             {
@@ -267,13 +313,14 @@ class QbReseedJump(_PluginBase):
                                 'component': 'VCol',
                                 'props': {'cols': 12, 'md': 6},
                                 'content': [{
-                                    'component': 'VCronField',
+                                    'component': 'VTextField',
                                     'props': {
                                         'model': 'cron',
                                         'label': '执行周期',
                                         'placeholder': '0 0 */23 * *',
                                         'hint': cron_hint,
-                                        'default': cron_default
+                                        'rules': [],
+                                        'persistent-hint': True
                                     }
                                 }]
                             },
@@ -476,7 +523,7 @@ class QbReseedJump(_PluginBase):
                                                                         (async () => {{
                                                                             try {{
                                                                                 const apiKey = {js_safe_api_token};
-                                                                                const response = await fetch('/api/v1/plugin/Qbreseedjump/reprocess_historical_data?apikey=' + encodeURIComponent(apiKey));
+                                                                                const response = await fetch('/api/v1/plugin/QbReseedJump/reprocess_historical_data?apikey=' + encodeURIComponent(apiKey));
                                                                                 const result = await response.json();
                                                                                 if (result.success) {{
                                                                                     alert('历史数据重新处理完成！');
@@ -506,7 +553,7 @@ class QbReseedJump(_PluginBase):
                                                                             if (confirm('确定要清理所有历史数据吗？此操作不可恢复！')) {{
                                                                                 try {{
                                                                                     const apiKey = {js_safe_api_token};
-                                                                                    const response = await fetch('/api/v1/plugin/Qbreseedjump/clear_all_history_data?apikey=' + encodeURIComponent(apiKey));
+                                                                                    const response = await fetch('/api/v1/plugin/QbReseedJump/clear_all_history_data?apikey=' + encodeURIComponent(apiKey));
                                                                                     const result = await response.json();
                                                                                     if (result.success) {{
                                                                                         alert('所有历史数据已清理完成！');
@@ -549,7 +596,7 @@ class QbReseedJump(_PluginBase):
             "processedcategory": "",
             "autostart": True,
             "remain_category": True,
-        "delete_exported": False,
+        "delete_exported": True,
         "risk_confirmation": "",
         "tracker_mapping": "agsvpt.trackers.work:末日\ntracker.agsvpt.work:末日\ntracker.agsvpt.cn:末日\ntracker.carpt.net:车站\ntracker.cyanbug.net:大青虫\ntracker.greatposterwall.com:海豹\ntracker.ilolicon.cc:萝莉\ntracker01.ilovelemonhd.me:柠檬\nourbits.club:我堡\npt.ourhelp.club:我堡\nptl.gs:劳改所\nrelay01.ptl.gs:8443:劳改所\nrousi.zip:肉丝\ntracker.rousipt.com:肉丝\ntracker.yemapt.org:野马\npt.gtk.pw:GTK\nwww.pttime.org:PTT\nnextpt.net:FSM\nconnects.icu:FSM\npt.gtkpw.xyz:GTK\ntracker.ptchdbits.co:彩虹岛\ntracker.rainbowisland.co:彩虹岛\nchdbits.xyz:彩虹岛\nzmpt.cc:织梦\nzmpt.club:织梦\ntracker.hdsky.me:天空\ntra1.m-team.cc:馒头\ntracker.pterclub.com:猫站\nhdfans.org:红豆饭\non.springsunday.net:春天\ntracker.totheglory.im:套套哥\nt.hddolby.com:高清杜比\nt.audiences.me:观众\ntracker.piggo.me:猪猪\ntracker.hdarea.club:高清视界"
         }
@@ -1291,7 +1338,7 @@ class QbReseedJump(_PluginBase):
                                         'props': {
                                             'variant': 'outlined',
                                             'color': 'secondary',
-                                            'href': '/plugin/page/Qbreseedjump'
+                                            'href': '/plugin/page/QbReseedJump'
                                         },
                                         'text': '返回统计'
                                     },
@@ -1328,20 +1375,30 @@ class QbReseedJump(_PluginBase):
             logger.error(f"保存tracker映射表失败: {e}")
             return False
 
-    def reprocess_historical_data(self):
+    def reprocess_historical_data(self, apikey: str) -> Response:
         """手动触发重新处理历史数据"""
         try:
+            # API认证检查
+            from app.core.config import settings
+            if apikey != settings.API_TOKEN:
+                return Response(success=False, message="API认证失败")
+            
             logger.info("手动触发重新处理历史数据...")
             self._reprocess_historical_data()
             logger.info("手动重新处理历史数据完成")
-            return {"success": True, "message": "历史数据重新处理完成"}
+            return Response(success=True, message="历史数据重新处理完成")
         except Exception as e:
             logger.error(f"手动重新处理历史数据失败: {e}")
-            return {"success": False, "message": f"重新处理失败: {str(e)}"}
+            return Response(success=False, message=f"重新处理失败: {str(e)}")
 
-    def clear_all_history_data(self):
+    def clear_all_history_data(self, apikey: str) -> Response:
         """清理所有历史数据"""
         try:
+            # API认证检查
+            from app.core.config import settings
+            if apikey != settings.API_TOKEN:
+                return Response(success=False, message="API认证失败")
+            
             logger.info("开始清理所有历史数据...")
             
             # 清空所有统计数据
@@ -1349,10 +1406,19 @@ class QbReseedJump(_PluginBase):
             self._save_stats(empty_stats)
             
             logger.info("所有历史数据已清理完成")
-            return {"success": True, "message": "所有历史数据已清理完成"}
+            return Response(success=True, message="所有历史数据已清理完成")
         except Exception as e:
             logger.error(f"清理所有历史数据失败: {e}")
-            return {"success": False, "message": f"清理失败: {str(e)}"}
+            return Response(success=False, message=f"清理失败: {str(e)}")
+
+    def test_api(self) -> Response:
+        """测试API方法"""
+        try:
+            logger.info("测试API调用成功")
+            return Response(success=True, message="测试API工作正常")
+        except Exception as e:
+            logger.error(f"测试API失败: {e}")
+            return Response(success=False, message=f"测试API失败: {str(e)}")
 
     def _reprocess_historical_data(self):
         """重新处理历史数据，更新站点名称"""
